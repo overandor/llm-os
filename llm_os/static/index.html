@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VM LLM OS Online</title>
+<style>
+  :root {
+    --bg: #050505;
+    --fg: #00ff41;
+    --dim: #008f11;
+    --warn: #ffaa00;
+    --err: #ff3333;
+    --panel: #0a0a0a;
+    --border: #003300;
+    --font: "Courier New", Courier, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font);
+    height: 100vh;
+    overflow: hidden;
+  }
+  #app {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+  }
+  /* Boot overlay */
+  #boot-overlay {
+    position: fixed; inset: 0;
+    background: var(--bg);
+    z-index: 1000;
+    padding: 2rem;
+    white-space: pre-wrap;
+    overflow-y: auto;
+    font-size: 14px;
+    line-height: 1.4;
+  }
+  /* Header bar */
+  #header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0.5rem 1rem;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+  }
+  #header .title { font-weight: bold; letter-spacing: 1px; }
+  #header .badge { color: var(--warn); }
+  /* Main */
+  #main { display: flex; flex: 1; overflow: hidden; }
+  /* Terminal */
+  #terminal-wrap {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--border);
+  }
+  #terminal {
+    flex: 1;
+    padding: 1rem;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 13px;
+    line-height: 1.45;
+  }
+  #terminal .out { color: var(--fg); }
+  #terminal .err { color: var(--err); }
+  #terminal .warn { color: var(--warn); }
+  #terminal .dim { color: var(--dim); }
+  #input-line {
+    display: flex; align-items: center;
+    padding: 0.5rem 1rem;
+    border-top: 1px solid var(--border);
+    background: var(--panel);
+  }
+  #prompt { margin-right: 0.5rem; }
+  #cmd-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--fg);
+    font-family: var(--font);
+    font-size: 13px;
+  }
+  /* Sidebar */
+  #sidebar {
+    width: 320px;
+    display: flex;
+    flex-direction: column;
+    background: var(--panel);
+  }
+  #sidebar .panel {
+    flex: 1;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border);
+    overflow-y: auto;
+    font-size: 12px;
+  }
+  #sidebar .panel h3 {
+    margin: 0 0 0.5rem;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--dim);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.25rem;
+  }
+  .kv { display: flex; justify-content: space-between; margin: 0.15rem 0; }
+  .kv .k { color: var(--dim); }
+  .kv .v { color: var(--fg); }
+  #controls {
+    padding: 0.75rem 1rem;
+    display: flex; gap: 0.5rem; flex-wrap: wrap;
+    border-bottom: 1px solid var(--border);
+  }
+  button {
+    background: transparent;
+    border: 1px solid var(--dim);
+    color: var(--fg);
+    font-family: var(--font);
+    font-size: 11px;
+    padding: 0.35rem 0.6rem;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  button:hover { background: var(--dim); color: var(--bg); }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  .status-dot {
+    display: inline-block;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--dim);
+    margin-right: 6px;
+  }
+  .status-dot.running { background: var(--fg); box-shadow: 0 0 6px var(--fg); }
+  .status-dot.halted { background: var(--err); box-shadow: 0 0 6px var(--err); }
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="boot-overlay"></div>
+  <div id="header">
+    <div class="title">VM LLM OS ONLINE <span class="badge">SIMULATION</span></div>
+    <div id="conn-status">DISCONNECTED</div>
+  </div>
+  <div id="main">
+    <div id="terminal-wrap">
+      <div id="terminal"></div>
+      <div id="input-line">
+        <span id="prompt">&gt;</span>
+        <input id="cmd-input" type="text" autocomplete="off" spellcheck="false" autofocus />
+      </div>
+    </div>
+    <div id="sidebar">
+      <div id="controls">
+        <button id="btn-boot">Boot</button>
+        <button id="btn-once">Once</button>
+        <button id="btn-halt">Halt</button>
+        <button id="btn-shutdown">Shutdown</button>
+        <button id="btn-clear">Clear</button>
+      </div>
+      <div class="panel" id="panel-os">
+        <h3>OS State</h3>
+        <div id="os-state"></div>
+      </div>
+      <div class="panel" id="panel-treasury">
+        <h3>Treasury</h3>
+        <div id="treasury-state"></div>
+      </div>
+      <div class="panel" id="panel-health">
+        <h3>System Health</h3>
+        <div id="health-state"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function() {
+    const boot = document.getElementById('boot-overlay');
+    const term = document.getElementById('terminal');
+    const input = document.getElementById('cmd-input');
+    const connStatus = document.getElementById('conn-status');
+    const osPanel = document.getElementById('os-state');
+    const treasuryPanel = document.getElementById('treasury-state');
+    const healthPanel = document.getElementById('health-state');
+
+    let ws = null;
+    let connected = false;
+    let bootDone = false;
+
+    function t(text, cls='out') {
+      const s = document.createElement('span');
+      s.className = cls;
+      s.textContent = text;
+      return s;
+    }
+
+    function appendLine(text, cls='out') {
+      term.appendChild(t(text, cls));
+      term.appendChild(document.createTextNode('\n'));
+      term.scrollTop = term.scrollHeight;
+    }
+
+    function setConn(status) {
+      connStatus.textContent = status;
+      connStatus.style.color = status === 'CONNECTED' ? 'var(--fg)' : 'var(--err)';
+    }
+
+    function wsUrl() {
+      const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      return proto + '//' + window.location.host + '/ws';
+    }
+
+    function connect() {
+      ws = new WebSocket(wsUrl());
+      ws.onopen = () => { connected = true; setConn('CONNECTED'); };
+      ws.onclose = () => { connected = false; setConn('DISCONNECTED'); ws = null; };
+      ws.onerror = () => { setConn('ERROR'); };
+      ws.onmessage = (ev) => {
+        try {
+          const msg = JSON.parse(ev.data);
+          handleMessage(msg);
+        } catch (e) {
+          appendLine(ev.data, 'err');
+        }
+      };
+    }
+
+    function send(obj) {
+      if (ws && connected) ws.send(JSON.stringify(obj));
+      else appendLine('Not connected.', 'err');
+    }
+
+    function handleMessage(msg) {
+      if (msg.type === 'output') {
+        appendLine(msg.text, 'out');
+      } else if (msg.type === 'status') {
+        updateStatus(msg.data);
+      } else if (msg.type === 'error') {
+        appendLine(msg.text, 'err');
+      } else if (msg.type === 'scan') {
+        appendLine(`Opportunities: ${msg.count}`, 'warn');
+        (msg.opportunities || []).forEach(o => {
+          appendLine(`  ${o.id} profit=$${(o.profit||0).toFixed(2)} ${o.desc}`, 'dim');
+        });
+      } else if (msg.type === 'treasury') {
+        updateTreasury(msg.data);
+      } else if (msg.type === 'build' || msg.type === 'train') {
+        appendLine(JSON.stringify(msg.result, null, 2), 'dim');
+      } else if (msg.type === 'help') {
+        appendLine(msg.text, 'warn');
+      } else if (msg.type === 'halt') {
+        appendLine(`Halted: ${msg.reason || 'unknown'}`, 'err');
+      } else if (msg.type === 'resume') {
+        appendLine('Resumed.', 'warn');
+      } else if (msg.type === 'boot') {
+        appendLine('Kernel booted.', 'warn');
+      } else if (msg.type === 'shutdown') {
+        appendLine('Kernel shutdown.', 'err');
+      } else if (msg.type === 'once') {
+        appendLine('Running one cycle...', 'warn');
+      }
+    }
+
+    function kv(container, k, v) {
+      const row = document.createElement('div'); row.className='kv';
+      const kk = document.createElement('span'); kk.className='k'; kk.textContent = k;
+      const vv = document.createElement('span'); vv.className='v'; vv.textContent = String(v);
+      row.appendChild(kk); row.appendChild(vv); container.appendChild(row);
+    }
+
+    function updateStatus(data) {
+      osPanel.innerHTML = '';
+      const st = data.state || {};
+      const dotClass = st.running ? 'running' : (data.governance?.halted ? 'halted' : '');
+      osPanel.innerHTML = `<div class="kv"><span class="k">Status</span><span class="v"><span class="status-dot ${dotClass}"></span>${st.running?'RUNNING':'IDLE'}</span></div>`;
+      kv(osPanel, 'Mode', st.mode || 'unknown');
+      kv(osPanel, 'Loops', st.loop_count || 0);
+      kv(osPanel, 'Uptime', fmtTime(st.uptime_seconds || 0));
+      kv(osPanel, 'Focus', st.current_focus || 'none');
+      kv(osPanel, 'Policy', data.governance?.policy?.name || 'unknown');
+
+      healthPanel.innerHTML = '';
+      const sys = data.system || {};
+      kv(healthPanel, 'CPU', (sys.cpu_percent || 0).toFixed(1) + '%');
+      kv(healthPanel, 'Memory', (sys.memory_percent || 0).toFixed(1) + '%');
+      kv(healthPanel, 'Disk', (sys.disk_percent || 0).toFixed(1) + '%');
+    }
+
+    function updateTreasury(data) {
+      treasuryPanel.innerHTML = '';
+      kv(treasuryPanel, 'Balance', '$' + (data.balance_usd || 0).toFixed(2));
+      kv(treasuryPanel, 'Runway', (data.runway_days || 0).toFixed(1) + ' days');
+      kv(treasuryPanel, 'Daily Burn', '$' + (data.daily_burn_7d || 0).toFixed(2));
+      kv(treasuryPanel, 'Entries', (data.ledger_count || 0));
+    }
+
+    function fmtTime(s) {
+      const m = Math.floor(s / 60), h = Math.floor(m / 60);
+      if (h > 0) return `${h}h ${m % 60}m ${(s % 60).toFixed(0)}s`;
+      if (m > 0) return `${m}m ${(s % 60).toFixed(0)}s`;
+      return `${s.toFixed(0)}s`;
+    }
+
+    function runBootSequence() {
+      const lines = [
+        {t:'BIOS DATE 05/19/26 17:50:00 VER 0.2.0', d:100},
+        {t:'CPU: LLM-Core v0.1.0 @ 3.20GHz', d:120},
+        {t:'MEM: 640K OK  (SIMULATED)', d:120},
+        {t:'Detecting primary storage...', d:200},
+        {t:'Loading kernel modules...', d:200},
+        {t:'  [ economic_engine ]  OK', d:150},
+        {t:'  [ system_builder ]   OK', d:150},
+        {t:'  [ llm_factory ]      OK', d:150},
+        {t:'  [ treasury ]         OK', d:150},
+        {t:'  [ governance ]       OK', d:150},
+        {t:'Mounting virtual filesystem... OK', d:200},
+        {t:'Initializing WebSocket transport...', d:300},
+        {t:'', d:100},
+        {t:'VM LLM OS ONLINE READY', d:0}
+      ];
+      let i = 0;
+      function next() {
+        if (i >= lines.length) {
+          boot.style.opacity = '0';
+          setTimeout(() => { boot.style.display='none'; bootDone = true; input.focus(); connect(); }, 600);
+          return;
+        }
+        const line = document.createElement('div');
+        line.textContent = lines[i].t;
+        boot.appendChild(line);
+        boot.scrollTop = boot.scrollHeight;
+        setTimeout(next, lines[i].d);
+        i++;
+      }
+      next();
+    }
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        const val = input.value.trim();
+        if (!val) return;
+        appendLine('> ' + val, 'warn');
+        send({cmd: val});
+        input.value = '';
+      }
+    });
+
+    document.getElementById('btn-boot').addEventListener('click', () => send({action:'boot'}));
+    document.getElementById('btn-once').addEventListener('click', () => send({action:'once'}));
+    document.getElementById('btn-halt').addEventListener('click', () => send({action:'halt'}));
+    document.getElementById('btn-shutdown').addEventListener('click', () => send({action:'shutdown'}));
+    document.getElementById('btn-clear').addEventListener('click', () => { term.innerHTML = ''; });
+
+    runBootSequence();
+  })();
+</script>
+</body>
+</html>
