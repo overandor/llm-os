@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Liquid Staked Endpoints - Enterprise LLM Suite</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .header h1 { color: white; font-size: 2.5em; margin-bottom: 10px; }
+        .header p { color: rgba(255,255,255,0.9); }
+        .card { background: white; border-radius: 15px; padding: 30px; margin-bottom: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .endpoint-card { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); padding: 20px; border-radius: 10px; }
+        .endpoint-card h3 { color: #333; margin-bottom: 10px; }
+        .endpoint-card .stat { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 0.9em; }
+        .endpoint-card .stat span:first-child { color: #666; }
+        .endpoint-card .stat span:last-child { color: #667eea; font-weight: 600; }
+        .input-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 8px; font-weight: 600; color: #333; }
+        input, select, textarea { width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px; transition: border-color 0.3s; }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: #667eea; }
+        button { width: 100%; padding: 14px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; transition: transform 0.2s; }
+        button:hover { transform: translateY(-2px); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .tabs { display: flex; margin-bottom: 20px; border-bottom: 2px solid #e0e0e0; }
+        .tab { flex: 1; padding: 15px; text-align: center; cursor: pointer; font-weight: 600; color: #666; transition: all 0.3s; }
+        .tab.active { color: #667eea; border-bottom: 3px solid #667eea; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .status-badge { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 0.8em; font-weight: 600; }
+        .status-active { background: #4caf50; color: white; }
+        .status-paused { background: #ff9800; color: white; }
+        .status-slashed { background: #f44336; color: white; }
+        .status-retired { background: #9e9e9e; color: white; }
+        .info-box { background: #e3f2fd; padding: 15px; border-radius: 8px; border-left: 4px solid #2196f3; margin-bottom: 20px; }
+        .info-box p { color: #1976d2; font-size: 0.9em; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>💎 Liquid Staked Endpoints</h1>
+            <p>Create, stake, and monetize inference endpoints with tokenized ownership</p>
+        </div>
+        
+        <div class="card">
+            <div class="tabs">
+                <div class="tab active" onclick="switchTab('marketplace')">Marketplace</div>
+                <div class="tab" onclick="switchTab('create')">Create Endpoint</div>
+                <div class="tab" onclick="switchTab('stake')">Stake</div>
+                <div class="tab" onclick="switchTab('infer')">Infer</div>
+                <div class="tab" onclick="switchTab('receipts')">Receipts</div>
+                <div class="tab" onclick="switchTab('rewards')">Rewards</div>
+                <div class="tab" onclick="switchTab('dashboard')">Operator Dashboard</div>
+            </div>
+            
+            <div id="marketplace" class="tab-content active">
+                <div class="info-box">
+                    <p>Browse all available liquid-staked endpoints. Stake to earn revenue share and get inference discounts.</p>
+                </div>
+                <div id="marketplaceList" class="grid" style="margin-top: 20px;">
+                    <p style="color: #999; grid-column: 1/-1; text-align: center;">Loading marketplace...</p>
+                </div>
+            </div>
+            
+            <div id="create" class="tab-content">
+                <div class="info-box">
+                    <p>Create a new liquid-staked inference endpoint. Stakers receive liquid tokens and share in revenue.</p>
+                </div>
+                <div class="input-group">
+                    <label>Owner Wallet</label>
+                    <input type="text" id="ownerWallet" placeholder="Solana wallet address">
+                </div>
+                <div class="input-group">
+                    <label>Endpoint Name</label>
+                    <input type="text" id="endpointName" placeholder="My LLM Endpoint">
+                </div>
+                <div class="input-group">
+                    <label>Runtime Type</label>
+                    <select id="runtimeType">
+                        <option value="ollama">Ollama</option>
+                        <option value="llama_cpp">llama.cpp</option>
+                        <option value="openai_proxy">OpenAI Proxy</option>
+                        <option value="custom">Custom</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>Model Name</label>
+                    <input type="text" id="modelName" placeholder="llama2" value="llama2">
+                </div>
+                <div class="input-group">
+                    <label>Endpoint URL</label>
+                    <input type="text" id="endpointUrl" placeholder="http://localhost:11434" value="http://localhost:11434">
+                </div>
+                <div class="input-group">
+                    <label>Price Per Request (tokens)</label>
+                    <input type="number" id="pricePerRequest" value="1.0" step="0.1">
+                </div>
+                <div class="input-group">
+                    <label>Price Per 1K Tokens (tokens)</label>
+                    <input type="number" id="pricePer1kTokens" value="0.1" step="0.01">
+                </div>
+                <div class="input-group">
+                    <label>Revenue Share (basis points, 0-10000)</label>
+                    <input type="number" id="revenueShare" value="7000" min="0" max="10000">
+                </div>
+                <button onclick="createEndpoint()">Create Endpoint</button>
+            </div>
+            
+            <div id="stake" class="tab-content">
+                <div class="info-box">
+                    <p>Stake tokens in an endpoint to receive liquid tokens and share in inference revenue.</p>
+                </div>
+                <div class="input-group">
+                    <label>Endpoint ID</label>
+                    <input type="text" id="stakeEndpointId" placeholder="end_...">
+                </div>
+                <div class="input-group">
+                    <label>Wallet Address</label>
+                    <input type="text" id="stakeWallet" placeholder="Your wallet address">
+                </div>
+                <div class="input-group">
+                    <label>Amount to Stake</label>
+                    <input type="number" id="stakeAmount" placeholder="100.0">
+                </div>
+                <div class="input-group">
+                    <label>Lock Days (0 for liquid)</label>
+                    <input type="number" id="lockDays" value="0" min="0">
+                </div>
+                <button onclick="stakeEndpoint()">Stake Tokens</button>
+            </div>
+            
+            <div id="infer" class="tab-content">
+                <div class="info-box">
+                    <p>Use an endpoint for inference. Stakers get 50% discount, validators get 75%.</p>
+                </div>
+                <div class="input-group">
+                    <label>Endpoint ID</label>
+                    <input type="text" id="inferEndpointId" placeholder="end_...">
+                </div>
+                <div class="input-group">
+                    <label>Wallet Address</label>
+                    <input type="text" id="inferWallet" placeholder="Your wallet address">
+                </div>
+                <div class="input-group">
+                    <label>Usage Tier</label>
+                    <select id="usageTier">
+                        <option value="free">Free (no discount)</option>
+                        <option value="staker">Staker (50% discount)</option>
+                        <option value="premium">Premium (25% discount)</option>
+                        <option value="validator">Validator (75% discount)</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>Prompt</label>
+                    <textarea id="prompt" rows="4" placeholder="Enter your prompt..."></textarea>
+                </div>
+                <div class="input-group">
+                    <label>Max Tokens</label>
+                    <input type="number" id="maxTokens" value="512" min="1" max="8192">
+                </div>
+                <div class="input-group">
+                    <label>Temperature</label>
+                    <input type="number" id="temperature" value="0.7" min="0" max="2" step="0.1">
+                </div>
+                <button onclick="runInference()">Run Inference</button>
+                <div id="inferenceResult" style="margin-top: 20px; padding: 15px; background: #f5f5f5; border-radius: 8px; display: none;"></div>
+            </div>
+            
+            <div id="claim" class="tab-content">
+                <div class="info-box">
+                    <p>Claim your share of the endpoint's revenue pool based on your liquid token ownership.</p>
+                </div>
+                <div class="input-group">
+                    <label>Endpoint ID</label>
+                    <input type="text" id="claimEndpointId" placeholder="end_...">
+                </div>
+                <div class="input-group">
+                    <label>Wallet Address</label>
+                    <input type="text" id="claimWallet" placeholder="Your wallet address">
+                </div>
+                <button onclick="claimRewards()">Claim Rewards</button>
+            </div>
+            
+            <div id="receipts" class="tab-content">
+                <div class="info-box">
+                    <p>View inference receipts for an endpoint. Receipts are cryptographically signed proof of inference.</p>
+                </div>
+                <div class="input-group">
+                    <label>Endpoint ID</label>
+                    <input type="text" id="receiptsEndpointId" placeholder="end_...">
+                </div>
+                <button onclick="loadReceipts()">Load Receipts</button>
+                <div id="receiptsList" style="margin-top: 20px;"></div>
+            </div>
+            
+            <div id="rewards" class="tab-content">
+                <div class="info-box">
+                    <p>View your stake positions and reward history across all endpoints.</p>
+                </div>
+                <div class="input-group">
+                    <label>Wallet Address</label>
+                    <input type="text" id="rewardsWallet" placeholder="Your wallet address">
+                </div>
+                <button onclick="loadRewards()">Load Positions</button>
+                <div id="rewardsList" style="margin-top: 20px;"></div>
+            </div>
+            
+            <div id="dashboard" class="tab-content">
+                <div class="info-box">
+                    <p>Operator dashboard for endpoint management. View stats, send heartbeats, pause/resume endpoints.</p>
+                </div>
+                <div class="input-group">
+                    <label>Endpoint ID</label>
+                    <input type="text" id="dashboardEndpointId" placeholder="end_...">
+                </div>
+                <button onclick="loadDashboard()">Load Dashboard</button>
+                <div id="dashboardStats" style="margin-top: 20px; display: none;">
+                    <h4>Endpoint Statistics</h4>
+                    <div id="statsGrid" class="grid" style="margin-top: 15px;"></div>
+                    
+                    <h4 style="margin-top: 30px;">Actions</h4>
+                    <div style="display: flex; gap: 10px; margin-top: 15px;">
+                        <button onclick="pauseEndpoint()" style="background: #ff9800;">Pause</button>
+                        <button onclick="resumeEndpoint()" style="background: #4caf50;">Resume</button>
+                        <button onclick="sendHeartbeat()" style="background: #2196f3;">Send Heartbeat</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h3>Your Endpoints</h3>
+            <div id="endpointsList" class="grid" style="margin-top: 20px;">
+                <p style="color: #999; grid-column: 1/-1; text-align: center;">No endpoints created yet</p>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const API_BASE = 'http://localhost:8000/api/liquid-endpoints';
+        
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById(tabId).classList.add('active');
+        }
+        
+        async function createEndpoint() {
+            const data = {
+                owner_wallet: document.getElementById('ownerWallet').value,
+                name: document.getElementById('endpointName').value,
+                runtime_type: document.getElementById('runtimeType').value,
+                model_name: document.getElementById('modelName').value,
+                endpoint_url: document.getElementById('endpointUrl').value,
+                price_per_request: parseFloat(document.getElementById('pricePerRequest').value),
+                price_per_1k_tokens: parseFloat(document.getElementById('pricePer1kTokens').value),
+                revenue_share_bps: parseInt(document.getElementById('revenueShare').value)
+            };
+            
+            try {
+                const response = await fetch(`${API_BASE}/create`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await response.json();
+                alert(`Endpoint created! ID: ${result.endpoint_id}`);
+                loadMarketplace();
+            } catch (error) {
+                alert('Failed to create endpoint: ' + error.message);
+            }
+        }
+        
+        async function stakeEndpoint() {
+            const endpointId = document.getElementById('stakeEndpointId').value;
+            const data = {
+                wallet: document.getElementById('stakeWallet').value,
+                amount: parseFloat(document.getElementById('stakeAmount').value),
+                lock_days: parseInt(document.getElementById('lockDays').value)
+            };
+            
+            try {
+                const response = await fetch(`${API_BASE}/${endpointId}/stake`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await response.json();
+                alert(`Staked! Liquid tokens: ${result.liquid_tokens_minted}`);
+            } catch (error) {
+                alert('Staking failed: ' + error.message);
+            }
+        }
+        
+        async function runInference() {
+            const endpointId = document.getElementById('inferEndpointId').value;
+            const data = {
+                wallet: document.getElementById('inferWallet').value,
+                prompt: document.getElementById('prompt').value,
+                tier: document.getElementById('usageTier').value,
+                max_tokens: parseInt(document.getElementById('maxTokens').value),
+                temperature: parseFloat(document.getElementById('temperature').value)
+            };
+            
+            try {
+                const response = await fetch(`${API_BASE}/${endpointId}/infer`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await response.json();
+                
+                const resultDiv = document.getElementById('inferenceResult');
+                resultDiv.style.display = 'block';
+                resultDiv.innerHTML = `
+                    <strong>Receipt ID:</strong> ${result.receipt_id}<br>
+                    <strong>Charged:</strong> ${result.charged_tokens} tokens<br>
+                    <strong>Reward to Stakers:</strong> ${result.reward_routed_to_stakers} tokens<br>
+                    <strong>Input Tokens:</strong> ${result.input_tokens}<br>
+                    <strong>Output Tokens:</strong> ${result.output_tokens}<br>
+                    <strong>Latency:</strong> ${result.latency_ms}ms<br>
+                    <strong>Result:</strong> ${result.result}<br>
+                    <strong>Signature:</strong> ${result.signature}
+                `;
+            } catch (error) {
+                alert('Inference failed: ' + error.message);
+            }
+        }
+        
+        async function claimRewards() {
+            const endpointId = document.getElementById('claimEndpointId').value;
+            const data = {
+                wallet: document.getElementById('claimWallet').value
+            };
+            
+            try {
+                const response = await fetch(`${API_BASE}/${endpointId}/claim`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await response.json();
+                alert(`Claimed ${result.claimed_rewards} tokens!`);
+            } catch (error) {
+                alert('Claim failed: ' + error.message);
+            }
+        }
+        
+        async function loadMarketplace() {
+            try {
+                const response = await fetch(API_BASE);
+                const endpoints = await response.json();
+                
+                const listDiv = document.getElementById('marketplaceList');
+                if (endpoints.length === 0) {
+                    listDiv.innerHTML = '<p style="color: #999; grid-column: 1/-1; text-align: center;">No endpoints available</p>';
+                    return;
+                }
+                
+                listDiv.innerHTML = endpoints.map(ep => `
+                    <div class="endpoint-card">
+                        <h3>${ep.model_name}</h3>
+                        <div class="stat"><span>Status:</span><span class="status-badge status-${ep.status}">${ep.status}</span></div>
+                        <div class="stat"><span>Runtime:</span><span>${ep.runtime_type}</span></div>
+                        <div class="stat"><span>Price/Request:</span><span>${ep.price_per_request} tokens</span></div>
+                        <div class="stat"><span>Price/1K Tokens:</span><span>${ep.price_per_1k_tokens} tokens</span></div>
+                        <div class="stat"><span>Total Staked:</span><span>${ep.total_staked} tokens</span></div>
+                        <div class="stat"><span>Liquid Supply:</span><span>${ep.liquid_supply}</span></div>
+                        <div class="stat"><span>Exchange Rate:</span><span>${ep.exchange_rate.toFixed(4)}</span></div>
+                        <div class="stat"><span>Total Requests:</span><span>${ep.total_requests}</span></div>
+                        <div class="stat"><span>Total Revenue:</span><span>${ep.total_revenue.toFixed(2)} tokens</span></div>
+                        <div class="stat"><span>Uptime Score:</span><span>${ep.uptime_score}%</span></div>
+                        <div style="margin-top: 10px; font-size: 0.8em; color: #666;">ID: ${ep.endpoint_id}</div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Failed to load marketplace:', error);
+            }
+        }
+        
+        async function loadReceipts() {
+            const endpointId = document.getElementById('receiptsEndpointId').value;
+            if (!endpointId) {
+                alert('Please enter endpoint ID');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/${endpointId}/receipts`);
+                const data = await response.json();
+                
+                const listDiv = document.getElementById('receiptsList');
+                if (data.receipts.length === 0) {
+                    listDiv.innerHTML = '<p style="color: #999; text-align: center;">No receipts found</p>';
+                    return;
+                }
+                
+                listDiv.innerHTML = data.receipts.map(r => `
+                    <div style="padding: 15px; border-bottom: 1px solid #eee; margin-bottom: 10px;">
+                        <strong>Receipt ID:</strong> ${r.receipt_id}<br>
+                        <strong>Wallet:</strong> ${r.requester_wallet}<br>
+                        <strong>Model:</strong> ${r.model_name}<br>
+                        <strong>Tokens:</strong> ${r.input_tokens} in / ${r.output_tokens} out<br>
+                        <strong>Fee:</strong> ${r.fee_paid} tokens<br>
+                        <strong>Staker Revenue:</strong> ${r.staker_revenue} tokens<br>
+                        <strong>Time:</strong> ${r.timestamp}<br>
+                        <strong>Signature:</strong> <code style="font-size: 0.8em;">${r.signature.slice(0, 32)}...</code>
+                    </div>
+                `).join('');
+            } catch (error) {
+                alert('Failed to load receipts: ' + error.message);
+            }
+        }
+        
+        async function loadRewards() {
+            const wallet = document.getElementById('rewardsWallet').value;
+            if (!wallet) {
+                alert('Please enter wallet address');
+                return;
+            }
+            
+            // This would need a new endpoint to get all positions for a wallet
+            // For now, show placeholder
+            const listDiv = document.getElementById('rewardsList');
+            listDiv.innerHTML = '<p style="color: #999; text-align: center;">Feature coming soon - view positions per endpoint</p>';
+        }
+        
+        async function loadDashboard() {
+            const endpointId = document.getElementById('dashboardEndpointId').value;
+            if (!endpointId) {
+                alert('Please enter endpoint ID');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/${endpointId}/stats`);
+                const stats = await response.json();
+                
+                document.getElementById('dashboardStats').style.display = 'block';
+                const statsGrid = document.getElementById('statsGrid');
+                statsGrid.innerHTML = `
+                    <div class="endpoint-card">
+                        <h4>Status</h4>
+                        <div class="stat"><span>Status:</span><span class="status-badge status-${stats.status}">${stats.status}</span></div>
+                        <div class="stat"><span>Uptime:</span><span>${stats.uptime_score}%</span></div>
+                        <div class="stat"><span>Last Heartbeat:</span><span>${stats.last_heartbeat || 'Never'}</span></div>
+                    </div>
+                    <div class="endpoint-card">
+                        <h4>Staking</h4>
+                        <div class="stat"><span>Total Staked:</span><span>${stats.total_staked} tokens</span></div>
+                        <div class="stat"><span>Liquid Supply:</span><span>${stats.liquid_supply}</span></div>
+                        <div class="stat"><span>Exchange Rate:</span><span>${stats.exchange_rate.toFixed(4)}</span></div>
+                        <div class="stat"><span>Stakers:</span><span>${stats.staker_count}</span></div>
+                        <div class="stat"><span>APR Estimate:</span><span>${stats.apr_estimate}%</span></div>
+                    </div>
+                    <div class="endpoint-card">
+                        <h4>Performance</h4>
+                        <div class="stat"><span>Total Requests:</span><span>${stats.total_requests}</span></div>
+                        <div class="stat"><span>Total Tokens:</span><span>${stats.total_tokens}</span></div>
+                        <div class="stat"><span>Total Revenue:</span><span>${stats.total_revenue.toFixed(2)} tokens</span></div>
+                        <div class="stat"><span>Pending Rewards:</span><span>${stats.pending_rewards.toFixed(2)} tokens</span></div>
+                    </div>
+                `;
+            } catch (error) {
+                alert('Failed to load dashboard: ' + error.message);
+            }
+        }
+        
+        async function pauseEndpoint() {
+            const endpointId = document.getElementById('dashboardEndpointId').value;
+            try {
+                const response = await fetch(`${API_BASE}/${endpointId}/pause`, { method: 'POST' });
+                const result = await response.json();
+                alert('Endpoint paused');
+                loadDashboard();
+            } catch (error) {
+                alert('Failed to pause: ' + error.message);
+            }
+        }
+        
+        async function resumeEndpoint() {
+            const endpointId = document.getElementById('dashboardEndpointId').value;
+            try {
+                const response = await fetch(`${API_BASE}/${endpointId}/resume`, { method: 'POST' });
+                const result = await response.json();
+                alert('Endpoint resumed');
+                loadDashboard();
+            } catch (error) {
+                alert('Failed to resume: ' + error.message);
+            }
+        }
+        
+        async function sendHeartbeat() {
+            const endpointId = document.getElementById('dashboardEndpointId').value;
+            try {
+                const response = await fetch(`${API_BASE}/${endpointId}/heartbeat?status=healthy&latency_ms=50&model_loaded=true&available_memory=8192&queue_depth=0`);
+                const result = await response.json();
+                alert('Heartbeat sent');
+                loadDashboard();
+            } catch (error) {
+                alert('Failed to send heartbeat: ' + error.message);
+            }
+        }
+        
+        // Load marketplace on page load
+        loadMarketplace();
+    </script>
+</body>
+</html>

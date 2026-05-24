@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head><title>LLM OS Demo</title></head>
+<body>
+<h1>LLM OS Demo</h1>
+<button onclick="startVM()">Start VM</button>
+<button onclick="executeAction()">Execute Action</button>
+<button onclick="checkPolicy()">Check Policy</button>
+<div id="stats"></div>
+<div id="log"></div>
+<script>
+let vms = [];
+let actions = 0;
+function startVM() {
+  vms.push({id: vms.length, policy: 'simulation', cost: 0});
+  log(`VM ${vms.length-1} started with simulation policy`);
+}
+function executeAction() {
+  actions++;
+  log("Action executed: SAFE - no cost incurred");
+}
+function checkPolicy() {
+  log("Policy check: Action allowed (SAFE class)");
+}
+function updateStats() {
+  document.getElementById('stats').innerHTML = `VMs: ${vms.length} | Actions: ${actions}`;
+}
+function log(msg) {
+  document.getElementById('log').innerHTML += `<div>${msg}</div>`;
+}
+</script>
+</body>
+</html>

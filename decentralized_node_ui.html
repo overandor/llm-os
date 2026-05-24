@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Decentralized Inference Node - Enterprise LLM Suite</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); min-height: 100vh; padding: 20px; color: #e0e0e0; }
+        .container { max-width: 1400px; margin: 0 auto; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .header h1 { color: #4ecca3; font-size: 2.5em; margin-bottom: 10px; }
+        .header p { color: rgba(255,255,255,0.7); }
+        .card { background: rgba(255,255,255,0.05); border-radius: 15px; padding: 30px; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.1); }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .stat-card { background: rgba(78, 204, 163, 0.1); padding: 20px; border-radius: 10px; border: 1px solid rgba(78, 204, 163, 0.3); }
+        .stat-card h3 { color: #4ecca3; margin-bottom: 10px; font-size: 0.9em; }
+        .stat-card .value { font-size: 2em; font-weight: 600; color: #fff; }
+        .input-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 8px; font-weight: 600; color: #aaa; }
+        input, select, textarea { width: 100%; padding: 12px; border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; font-size: 14px; background: rgba(255,255,255,0.05); color: #fff; transition: border-color 0.3s; }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: #4ecca3; }
+        button { width: 100%; padding: 14px; background: linear-gradient(135deg, #4ecca3 0%, #45b390 100%); color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; transition: transform 0.2s; }
+        button:hover { transform: translateY(-2px); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .tabs { display: flex; margin-bottom: 20px; border-bottom: 2px solid rgba(255,255,255,0.1); }
+        .tab { flex: 1; padding: 15px; text-align: center; cursor: pointer; font-weight: 600; color: #888; transition: all 0.3s; }
+        .tab.active { color: #4ecca3; border-bottom: 3px solid #4ecca3; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .status-badge { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 0.8em; font-weight: 600; }
+        .status-active { background: #4caf50; color: white; }
+        .status-inactive { background: #9e9e9e; color: white; }
+        .status-error { background: #f44336; color: white; }
+        .info-box { background: rgba(33, 150, 243, 0.1); padding: 15px; border-radius: 8px; border-left: 4px solid #2196f3; margin-bottom: 20px; }
+        .info-box p { color: #64b5f6; font-size: 0.9em; }
+        .job-card { background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; margin-bottom: 10px; border: 1px solid rgba(255,255,255,0.1); }
+        .job-card .job-id { color: #4ecca3; font-weight: 600; }
+        .job-card .status { color: #aaa; font-size: 0.9em; }
+        .receipt-card { background: rgba(156, 39, 176, 0.1); padding: 15px; border-radius: 8px; margin-bottom: 10px; border: 1px solid rgba(156, 39, 176, 0.3); }
+        .receipt-card .receipt-id { color: #ab47bc; font-weight: 600; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔗 Decentralized Inference Node</h1>
+            <p>Run local LLM inference, sign receipts, distribute revenue to stakers</p>
+        </div>
+        
+        <div class="card">
+            <div class="tabs">
+                <div class="tab active" onclick="switchTab('dashboard')">Node Dashboard</div>
+                <div class="tab" onclick="switchTab('register')">Register Node</div>
+                <div class="tab" onclick="switchTab('public-link')">Public Link</div>
+                <div class="tab" onclick="switchTab('jobs')">Job Queue</div>
+                <div class="tab" onclick="switchTab('receipts')">Receipts</div>
+                <div class="tab" onclick="switchTab('revenue')">Revenue</div>
+                <div class="tab" onclick="switchTab('stakers')">Staker Distribution</div>
+            </div>
+            
+            <div id="dashboard" class="tab-content active">
+                <div class="info-box">
+                    <p>Real-time node status and performance metrics.</p>
+                </div>
+                <div id="nodeStats" class="grid" style="margin-top: 20px;">
+                    <p style="color: #888; grid-column: 1/-1; text-align: center;">Loading node status...</p>
+                </div>
+            </div>
+            
+            <div id="register" class="tab-content">
+                <div class="info-box">
+                    <p>Register this machine as a decentralized inference node.</p>
+                </div>
+                <button onclick="registerThisMachine()" style="background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%); margin-bottom: 20px;">🚀 Register This Machine (Auto-fill)</button>
+                <div class="input-group">
+                    <label>Machine Name</label>
+                    <input type="text" id="machineName" placeholder="my-inference-node">
+                </div>
+                <div class="input-group">
+                    <label>Models Available (comma-separated)</label>
+                    <input type="text" id="modelsAvailable" placeholder="llama2,mistral,neural-chat">
+                </div>
+                <div class="input-group">
+                    <label>Endpoint URL</label>
+                    <input type="text" id="endpointUrl" placeholder="http://localhost:11434">
+                </div>
+                <div class="input-group">
+                    <label>Wallet Address</label>
+                    <input type="text" id="walletAddress" placeholder="Your wallet address">
+                </div>
+                <button onclick="registerNode()">Register Node</button>
+                <div id="registrationResult" style="margin-top: 20px;"></div>
+                <div id="nodeRegistrationStatus" style="margin-top: 20px;"></div>
+            </div>
+            
+            <div id="public-link" class="tab-content">
+                <div class="info-box">
+                    <p>Expose your node publicly via tunnel or custom domain.</p>
+                </div>
+                <div class="input-group">
+                    <label>Access Mode</label>
+                    <select id="accessMode">
+                        <option value="local">Local Only (localhost)</option>
+                        <option value="ngrok">Ngrok Tunnel</option>
+                        <option value="cloudflared">Cloudflare Tunnel</option>
+                        <option value="custom">Custom Domain</option>
+                    </select>
+                </div>
+                <div class="input-group" id="domainInputGroup" style="display: none;">
+                    <label>Custom Domain</label>
+                    <input type="text" id="customDomain" placeholder="inference.example.com">
+                </div>
+                <button onclick="startPublicLink()">Start Public Link</button>
+                <button onclick="stopPublicLink()" style="background: #f44336; margin-top: 10px;">Stop Public Link</button>
+                <div id="publicLinkStatus" style="margin-top: 20px;"></div>
+            </div>
+            
+            <div id="jobs" class="tab-content">
+                <div class="info-box">
+                    <p>View and manage inference job queue.</p>
+                </div>
+                <div style="background: rgba(33, 150, 243, 0.1); padding: 15px; border-radius: 8px; border-left: 4px solid #2196f3; margin-bottom: 20px;">
+                    <h3 style="color: #64b5f6; margin-bottom: 10px;">Submit Test Job</h3>
+                    <div class="input-group">
+                        <label>Endpoint ID</label>
+                        <input type="text" id="jobEndpointId" placeholder="smoke_end_001">
+                    </div>
+                    <div class="input-group">
+                        <label>Requester Wallet</label>
+                        <input type="text" id="jobRequesterWallet" placeholder="requester_wallet">
+                    </div>
+                    <div class="input-group">
+                        <label>Prompt</label>
+                        <textarea id="jobPrompt" placeholder="Explain quantum computing..." style="min-height: 80px;"></textarea>
+                    </div>
+                    <div class="input-group">
+                        <label>Max Fee</label>
+                        <input type="number" id="jobMaxFee" placeholder="0.01" step="0.001">
+                    </div>
+                    <button onclick="submitJob()" style="background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%);">Submit Job</button>
+                    <div id="jobSubmissionResult" style="margin-top: 15px;"></div>
+                </div>
+                <div class="input-group">
+                    <label>Filter by Status</label>
+                    <select id="jobStatusFilter">
+                        <option value="">All</option>
+                        <option value="queued">Queued</option>
+                        <option value="running">Running</option>
+                        <option value="completed">Completed</option>
+                        <option value="failed">Failed</option>
+                    </select>
+                </div>
+                <button onclick="loadJobs()">Load Jobs</button>
+                <button onclick="processNextJob()" style="background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%); margin-top: 10px;">Process Next Job (Local Mode)</button>
+                <div id="jobsList" style="margin-top: 20px;"></div>
+            </div>
+            
+            <div id="receipts" class="tab-content">
+                <div class="info-box">
+                    <p>View signed inference receipts proving job execution.</p>
+                </div>
+                <div class="input-group">
+                    <label>Job ID</label>
+                    <input type="text" id="receiptJobId" placeholder="job_...">
+                </div>
+                <button onclick="loadReceipt()">Load Receipt</button>
+                <button onclick="verifyReceipt()" style="background: linear-gradient(135deg, #9c27b0 0%, #7b1fa2 100%); margin-top: 10px;">Verify Receipt Signature</button>
+                <div id="receiptDisplay" style="margin-top: 20px;"></div>
+                <div id="receiptExplorer" style="margin-top: 30px;">
+                    <h3 style="color: #ab47bc; margin-bottom: 15px;">Receipt Explorer</h3>
+                    <div class="input-group">
+                        <label>Endpoint ID</label>
+                        <input type="text" id="explorerEndpointId" placeholder="smoke_end_001">
+                    </div>
+                    <button onclick="loadAllReceipts()">Load All Receipts</button>
+                    <div id="allReceiptsList" style="margin-top: 20px;"></div>
+                </div>
+            </div>
+            
+            <div id="revenue" class="tab-content">
+                <div class="info-box">
+                    <p>View revenue earned from completed inference jobs.</p>
+                </div>
+                <div id="revenueStats" class="grid" style="margin-top: 20px;">
+                    <p style="color: #888; grid-column: 1/-1; text-align: center;">Loading revenue stats...</p>
+                </div>
+            </div>
+            
+            <div id="stakers" class="tab-content">
+                <div class="info-box">
+                    <p>View staker distribution and revenue share.</p>
+                </div>
+                <div class="input-group">
+                    <label>Endpoint ID</label>
+                    <input type="text" id="stakerEndpointId" placeholder="end_...">
+                </div>
+                <button onclick="loadStakers()">Load Stakers</button>
+                <div id="stakersList" style="margin-top: 20px;"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const API_BASE = 'http://localhost:8000/api/decentralized';
+        
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById(tabId).classList.add('active');
+            
+            // Load data when switching tabs
+            if (tabId === 'dashboard') loadNodeDashboard();
+            if (tabId === 'public-link') loadPublicLinkStatus();
+            if (tabId === 'jobs') loadJobs();
+            if (tabId === 'revenue') loadRevenue();
+        }
+        
+        async function loadNodeDashboard() {
+            try {
+                const response = await fetch(`${API_BASE}/node/me`);
+                const data = await response.json();
+                
+                if (!data.success) {
+                    document.getElementById('nodeStats').innerHTML = '<p style="color: #888; grid-column: 1/-1; text-align: center;">Node not registered</p>';
+                    return;
+                }
+                
+                document.getElementById('nodeStats').innerHTML = `
+                    <div class="stat-card">
+                        <h3>Node ID</h3>
+                        <div class="value" style="font-size: 1em;">${data.node_id}</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Machine Name</h3>
+                        <div class="value">${data.machine_name}</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Models</h3>
+                        <div class="value" style="font-size: 1em;">${data.models_available.join(', ')}</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Endpoint URL</h3>
+                        <div class="value" style="font-size: 1em;">${data.endpoint_url}</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Wallet</h3>
+                        <div class="value" style="font-size: 1em;">${data.wallet_address.slice(0, 8)}...</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Public Key</h3>
+                        <div class="value" style="font-size: 1em;">${data.public_key.slice(0, 16)}...</div>
+                    </div>
+                `;
+            } catch (error) {
+                document.getElementById('nodeStats').innerHTML = '<p style="color: #f44336; grid-column: 1/-1; text-align: center;">Failed to load node status</p>';
+            }
+        }
+        
+        async function registerThisMachine() {
+            // Auto-fill with sensible defaults for local testing
+            document.getElementById('machineName').value = 'local-worker-' + Math.random().toString(36).substring(7);
+            document.getElementById('modelsAvailable').value = 'llama2,mock';
+            document.getElementById('endpointUrl').value = 'http://localhost:8000';
+            document.getElementById('walletAddress').value = 'local_operator_wallet';
+            
+            // Auto-register
+            await registerNode();
+            
+            // Show registration status
+            showNodeRegistrationStatus();
+        }
+        
+        async function showNodeRegistrationStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/node/me`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('nodeRegistrationStatus').innerHTML = `
+                        <div style="background: rgba(76, 175, 80, 0.1); padding: 20px; border-radius: 8px; border: 1px solid #4caf50; margin-top: 20px;">
+                            <h3 style="color: #4caf50; margin-bottom: 15px;">✓ Node Registered</h3>
+                            <div style="font-size: 0.9em; color: #aaa;">
+                                <div><strong>Node ID:</strong> ${data.node_id}</div>
+                                <div><strong>Machine Name:</strong> ${data.machine_name}</div>
+                                <div><strong>Models:</strong> ${data.models_available.join(', ')}</div>
+                                <div><strong>Endpoint URL:</strong> ${data.endpoint_url}</div>
+                                <div><strong>Wallet:</strong> ${data.wallet_address}</div>
+                                <div><strong>Public Key:</strong> ${data.public_key.slice(0, 32)}...</div>
+                                <div><strong>Created:</strong> ${data.created_at}</div>
+                            </div>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                document.getElementById('nodeRegistrationStatus').innerHTML = `<p style="color: #f44336;">Error loading node status: ${error.message}</p>`;
+            }
+        }
+        
+        async function registerNode() {
+            const data = {
+                machine_name: document.getElementById('machineName').value,
+                models_available: document.getElementById('modelsAvailable').value.split(',').map(s => s.trim()),
+                endpoint_url: document.getElementById('endpointUrl').value,
+                wallet_address: document.getElementById('walletAddress').value
+            };
+            
+            try {
+                const response = await fetch(`${API_BASE}/node/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    document.getElementById('registrationResult').innerHTML = `
+                        <div style="background: rgba(76, 175, 80, 0.1); padding: 15px; border-radius: 8px; border: 1px solid #4caf50;">
+                            <p style="color: #4caf50;">Node registered successfully!</p>
+                            <p style="color: #aaa; font-size: 0.9em;">Node ID: ${result.node_id}</p>
+                            <p style="color: #aaa; font-size: 0.9em;">Public Key: ${result.public_key.slice(0, 32)}...</p>
+                        </div>
+                    `;
+                } else {
+                    document.getElementById('registrationResult').innerHTML = `<p style="color: #f44336;">Registration failed</p>`;
+                }
+            } catch (error) {
+                document.getElementById('registrationResult').innerHTML = `<p style="color: #f44336;">Error: ${error.message}</p>`;
+            }
+        }
+        
+        document.getElementById('accessMode').addEventListener('change', function() {
+            document.getElementById('domainInputGroup').style.display = this.value === 'custom' ? 'block' : 'none';
+        });
+        
+        async function startPublicLink() {
+            const mode = document.getElementById('accessMode').value;
+            const domain = document.getElementById('customDomain').value;
+            
+            const data = { mode };
+            if (mode === 'custom') data.domain = domain;
+            
+            try {
+                const response = await fetch(`${API_BASE}/public-link/start`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    document.getElementById('publicLinkStatus').innerHTML = `
+                        <div style="background: rgba(76, 175, 80, 0.1); padding: 15px; border-radius: 8px; border: 1px solid #4caf50;">
+                            <p style="color: #4caf50;">Public link started!</p>
+                            <p style="color: #aaa; font-size: 0.9em;">URL: ${result.public_url}</p>
+                            <p style="color: #aaa; font-size: 0.9em;">Mode: ${result.mode}</p>
+                        </div>
+                    `;
+                } else {
+                    document.getElementById('publicLinkStatus').innerHTML = `
+                        <div style="background: rgba(244, 67, 54, 0.1); padding: 15px; border-radius: 8px; border: 1px solid #f44336;">
+                            <p style="color: #f44336;">Failed to start public link</p>
+                            <p style="color: #aaa; font-size: 0.9em;">${result.error_message || 'Unknown error'}</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                document.getElementById('publicLinkStatus').innerHTML = `<p style="color: #f44336;">Error: ${error.message}</p>`;
+            }
+        }
+        
+        async function stopPublicLink() {
+            try {
+                const response = await fetch(`${API_BASE}/public-link/stop`, { method: 'POST' });
+                const result = await response.json();
+                document.getElementById('publicLinkStatus').innerHTML = `<p style="color: #4caf50;">Public link stopped</p>`;
+            } catch (error) {
+                document.getElementById('publicLinkStatus').innerHTML = `<p style="color: #f44336;">Error: ${error.message}</p>`;
+            }
+        }
+        
+        async function loadPublicLinkStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/public-link/status`);
+                const result = await response.json();
+                
+                if (result.status === 'none') {
+                    document.getElementById('publicLinkStatus').innerHTML = '<p style="color: #888;">No public link active</p>';
+                } else {
+                    document.getElementById('publicLinkStatus').innerHTML = `
+                        <div style="background: rgba(78, 204, 163, 0.1); padding: 15px; border-radius: 8px; border: 1px solid #4ecca3;">
+                            <p style="color: #4ecca3;">Public link active</p>
+                            <p style="color: #aaa; font-size: 0.9em;">URL: ${result.public_url}</p>
+                            <p style="color: #aaa; font-size: 0.9em;">Mode: ${result.mode}</p>
+                            <p style="color: #aaa; font-size: 0.9em;">Started: ${result.started_at}</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                document.getElementById('publicLinkStatus').innerHTML = `<p style="color: #f44336;">Error: ${error.message}</p>`;
+            }
+        }
+        
+        async function submitJob() {
+            const data = {
+                requester_wallet: document.getElementById('jobRequesterWallet').value,
+                endpoint_id: document.getElementById('jobEndpointId').value,
+                model_name: 'llama2',
+                prompt: document.getElementById('jobPrompt').value,
+                max_fee: parseFloat(document.getElementById('jobMaxFee').value)
+            };
+            
+            try {
+                const response = await fetch(`${API_BASE}/jobs`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    document.getElementById('jobSubmissionResult').innerHTML = `
+                        <div style="background: rgba(76, 175, 80, 0.1); padding: 15px; border-radius: 8px; border: 1px solid #4caf50;">
+                            <p style="color: #4caf50;">Job submitted successfully!</p>
+                            <p style="color: #aaa; font-size: 0.9em;">Job ID: ${result.job_id}</p>
+                            <p style="color: #aaa; font-size: 0.9em;">Status: ${result.status}</p>
+                        </div>
+                    `;
+                    loadJobs();
+                } else {
+                    document.getElementById('jobSubmissionResult').innerHTML = `<p style="color: #f44336;">Submission failed</p>`;
+                }
+            } catch (error) {
+                document.getElementById('jobSubmissionResult').innerHTML = `<p style="color: #f44336;">Error: ${error.message}</p>`;
+            }
+        }
+        
+        async function processNextJob() {
+            // This would call the worker to process the next job
+            // For now, just show a message that this requires the worker daemon
+            document.getElementById('jobsList').innerHTML = `
+                <div style="background: rgba(255, 152, 0, 0.1); padding: 15px; border-radius: 8px; border: 1px solid #ff9800;">
+                    <p style="color: #ff9800;">To process jobs, run the worker daemon:</p>
+                    <code style="color: #aaa; font-size: 0.9em;">python3 decentralized_worker.py --endpoint ENDPOINT_ID --model llama2 --runtime mock --url http://localhost:8000 --wallet your_wallet</code>
+                </div>
+            `;
+        }
+        
+        async function loadJobs() {
+            const status = document.getElementById('jobStatusFilter').value;
+            const url = status ? `${API_BASE}/jobs?status=${status}` : `${API_BASE}/jobs`;
+            
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                const listDiv = document.getElementById('jobsList');
+                if (data.jobs.length === 0) {
+                    listDiv.innerHTML = '<p style="color: #888; text-align: center;">No jobs found</p>';
+                    return;
+                }
+                
+                listDiv.innerHTML = data.jobs.map(job => `
+                    <div class="job-card">
+                        <div class="job-id">${job.job_id}</div>
+                        <div class="status">Status: ${job.status}</div>
+                        <div style="font-size: 0.9em; color: #888; margin-top: 5px;">
+                            Model: ${job.model_name} | Max Fee: ${job.max_fee} | Created: ${job.created_at}
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                document.getElementById('jobsList').innerHTML = `<p style="color: #f44336;">Error: ${error.message}</p>`;
+            }
+        }
+        
+        async function loadReceipt() {
+            const jobId = document.getElementById('receiptJobId').value;
+            if (!jobId) {
+                alert('Please enter job ID');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/jobs/${jobId}/receipt`);
+                const data = await response.json();
+                
+                if (!data.success) {
+                    document.getElementById('receiptDisplay').innerHTML = '<p style="color: #f44336;">Receipt not found</p>';
+                    return;
+                }
+                
+                document.getElementById('receiptDisplay').innerHTML = `
+                    <div class="receipt-card">
+                        <div class="receipt-id">${data.receipt_id}</div>
+                        <div style="margin-top: 10px; font-size: 0.9em; color: #aaa;">
+                            <div>Response Hash: ${data.response_hash}</div>
+                            <div>Output Tokens: ${data.output_tokens}</div>
+                            <div>Latency: ${data.latency_ms}ms</div>
+                            <div>Fee Charged: ${data.fee_charged}</div>
+                            <div>Node Signature: ${data.node_signature.slice(0, 32)}...</div>
+                            <div>Completed: ${data.completed_at}</div>
+                        </div>
+                    </div>
+                `;
+            } catch (error) {
+                document.getElementById('receiptDisplay').innerHTML = `<p style="color: #f44336;">Error: ${error.message}</p>`;
+            }
+        }
+        
+        async function verifyReceipt() {
+            const jobId = document.getElementById('receiptJobId').value;
+            if (!jobId) {
+                alert('Please enter job ID first');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/jobs/${jobId}/receipt`);
+                const data = await response.json();
+                
+                if (!data.success) {
+                    document.getElementById('receiptDisplay').innerHTML = '<p style="color: #f44336;">Receipt not found</p>';
+                    return;
+                }
+                
+                // Verify signature (mock verification - in production would use receipt_signer)
+                const isValid = data.node_signature && data.node_signature.length === 64;
+                
+                document.getElementById('receiptDisplay').innerHTML += `
+                    <div style="background: rgba(156, 39, 176, 0.1); padding: 15px; border-radius: 8px; border: 1px solid #9c27b0; margin-top: 15px;">
+                        <p style="color: #ab47bc;">${isValid ? '✓ Signature Valid' : '✗ Signature Invalid'}</p>
+                        <p style="color: #aaa; font-size: 0.9em;">Verified at: ${new Date().toISOString()}</p>
+                    </div>
+                `;
+            } catch (error) {
+                document.getElementById('receiptDisplay').innerHTML = `<p style="color: #f44336;">Error: ${error.message}</p>`;
+            }
+        }
+        
+        async function loadAllReceipts() {
+            const endpointId = document.getElementById('explorerEndpointId').value;
+            if (!endpointId) {
+                alert('Please enter endpoint ID');
+                return;
+            }
+            
+            // This would query the liquid endpoint store for receipts
+            // For now, show placeholder
+            document.getElementById('allReceiptsList').innerHTML = `
+                <div style="background: rgba(156, 39, 176, 0.1); padding: 15px; border-radius: 8px; border: 1px solid #9c27b0;">
+                    <p style="color: #ab47bc;">Receipt explorer requires liquid endpoint store integration</p>
+                    <p style="color: #aaa; font-size: 0.9em;">Use the liquid endpoints UI to view receipts: <a href="/liquid-endpoints" style="color: #ab47bc;">/liquid-endpoints</a></p>
+                </div>
+            `;
+        }
+        
+        async function loadRevenue() {
+            // This would query the node registry for revenue stats
+            // For now, show placeholder
+            document.getElementById('revenueStats').innerHTML = `
+                <div class="stat-card">
+                    <h3>Total Fees Earned</h3>
+                    <div class="value">0.000</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Jobs Completed</h3>
+                    <div class="value">0</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Average Latency</h3>
+                    <div class="value">0ms</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Uptime Score</h3>
+                    <div class="value">100%</div>
+                </div>
+            `;
+        }
+        
+        async function loadStakers() {
+            const endpointId = document.getElementById('stakerEndpointId').value;
+            if (!endpointId) {
+                alert('Please enter endpoint ID');
+                return;
+            }
+            
+            // This would query the liquid endpoint store for stakers
+            // For now, show placeholder
+            document.getElementById('stakersList').innerHTML = '<p style="color: #888; text-align: center;">Feature coming soon - view stakers via liquid endpoints</p>';
+        }
+        
+        // Load dashboard on page load
+        loadNodeDashboard();
+    </script>
+</body>
+</html>

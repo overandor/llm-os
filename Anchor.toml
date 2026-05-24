@@ -1,0 +1,21 @@
+[features]
+seeds = true
+skip-lint = false
+
+[programs.localnet]
+inference_token = "INF7oken111111111111111111111111111111111"
+liquid_staking = "LStk1111111111111111111111111111111111111"
+
+[programs.devnet]
+inference_token = "INF7oken111111111111111111111111111111111"
+liquid_staking = "LStk1111111111111111111111111111111111111"
+
+[registry]
+url = "https://api.apr.dev"
+
+[provider]
+cluster = "devnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "npx ts-mocha -p ./tsconfig.json tests/**/*.ts"
