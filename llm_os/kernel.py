@@ -93,6 +93,7 @@ class Kernel:
             self._run_loop(max_loops)
         else:
             self._loop_cycle()
+            self.state.running = False
 
     def stop(self):
         """Stop the kernel gracefully."""
@@ -100,6 +101,19 @@ class Kernel:
         # Stop trading if running
         self.economic_engine.stop_trading()
         print("[KERNEL] Stopped.")
+
+    def _safe_json(self, obj: any) -> str:
+        """Serialize to JSON, falling back to str() for non-serializable objects."""
+        def _default(o):
+            if hasattr(o, "__dataclass_fields__"):
+                return {k: getattr(o, k) for k in o.__dataclass_fields__}
+            if hasattr(o, "value"):
+                return o.value
+            return str(o)
+        try:
+            return json.dumps(obj, indent=2, default=_default)
+        except Exception:
+            return str(obj)
 
     def _run_loop(self, max_loops: int = None):
         """Run the main autonomous loop."""
@@ -125,7 +139,7 @@ class Kernel:
 
         # 1. SENSE — Check system health, governance, treasury
         health = self._sense()
-        print(f"[SENSE] Health: {json.dumps(health, indent=2)}")
+        print(f"[SENSE] Health: {self._safe_json(health)}")
 
         if self.governance.is_halted():
             print("[SENSE] OS is HALTED. Skipping cycle.")
@@ -133,23 +147,26 @@ class Kernel:
 
         # 2. DECIDE — What should we do?
         decision = self._decide()
-        print(f"[DECIDE] Decision: {json.dumps(decision, indent=2)}")
+        print(f"[DECIDE] Decision: {self._safe_json(decision)}")
 
         if decision.get("action") == "wait":
             print("[DECIDE] No profitable action. Waiting.")
+            self._learn(decision, {}, [], {"all_ok": True, "errors": [], "results_checked": 0})
+            self._account()
+            print(f"[KERNEL] Loop {loop_num} complete.")
             return
 
         # 3. PLAN — Break into tasks
         plan = self._plan(decision)
-        print(f"[PLAN] Plan: {json.dumps(plan, indent=2)}")
+        print(f"[PLAN] Plan: {self._safe_json(plan)}")
 
         # 4. EXECUTE — Run tasks
         results = self._execute(plan)
-        print(f"[EXECUTE] Results: {json.dumps(results, indent=2)}")
+        print(f"[EXECUTE] Results: {self._safe_json(results)}")
 
         # 5. VERIFY — Check outputs
         verified = self._verify(results)
-        print(f"[VERIFY] Verified: {json.dumps(verified, indent=2)}")
+        print(f"[VERIFY] Verified: {self._safe_json(verified)}")
 
         # 6. LEARN — Update memory
         self._learn(decision, plan, results, verified)
